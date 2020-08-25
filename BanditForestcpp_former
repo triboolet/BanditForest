@@ -1,0 +1,233 @@
+#include <iostream>
+#include <math.h>
+// unique_ptr
+#include <memory>
+#include <algorithm>
+#include "consts.hpp"
+#include "BanditForest.hpp"
+#include "Tree.hpp"
+#include "utils.hpp"
+
+using namespace std;
+
+BanditForest::BanditForest(Dataset d) {
+  x = d;
+}
+
+BanditForest::~BanditForest() {
+
+}
+
+
+void BanditForest::SaveResults_Gain(const char *nomfichier)
+// Build the result file
+// format: t \t mean sum of rewards - CI \t mean sum of rewards \t mean sum of rewards + CI
+{
+
+	int t,n,i;
+	float Regret,Gain,TC;
+  unique_ptr<int[]> r(new int[M]), g(new int[M]);
+  unique_ptr<float[]> c(new float[M]);
+	FILE *f[1024];
+	FILE *fic;
+	char buf[1024];
+	float classif_s,r_s,s;
+	
+	for (n=0;n<Draws;n++) {
+		sprintf(buf,"%s.csv%d",nomfichier,n);
+		f[n]=fopen(buf,"r"); 
+	}
+	sprintf(buf,"%s.csv",nomfichier);
+	fic=fopen(buf,"w"); 
+	fprintf(fic,"Step;R-;R;R+;G-;G;G+;A-;A;A+\n");
+	
+	for (t=TimeDisplay;t<T;t=t+TimeDisplay) {
+		Regret=0.0;Gain=0.0;classif_s=0.0;r_s=0.0;s=0.0;TC=0.0;
+		for (n=0;n<Draws;n++) {
+      if (fscanf(f[n],"%d;%d;%d;%f",&t,&r[n],&g[n],&c[n]) == -1) {
+        cerr << "fscanf" << endl;
+        exit(EXIT_FAILURE);
+      }
+      Regret=Regret+ (float)r[n];
+			Gain=Gain+g[n];
+			TC=TC+c[n];
+		}
+    Regret /= (float)Draws;
+		Gain=Gain/(float)Draws;
+		TC=TC/(float)Draws;
+		for(i=0;i<Draws;i++) {
+      s=s+(float)(g[i]-Gain)*(g[i]-Gain);
+      r_s = r_s + (float)(r[i] - Regret)*(r[i]-Regret);
+      classif_s = classif_s + (float)(c[i] - TC)*(c[i]-TC);
+    }
+
+		s=sqrt(s/(float)(Draws));
+    r_s=sqrt(r_s/(float)Draws);
+    //printf("s : %f\n", s);
+		fprintf(fic,"%d;%f;%f;%f;%f;%f;%f;%f;%f;%f\n", t, Regret - 1.96*r_s/sqrt(Draws), Regret, Regret + 1.96*r_s/sqrt(Draws), 
+        Gain-1.96*s/(sqrt(Draws)), Gain, Gain+1.96*s/(sqrt(Draws)), 
+        TC - 1.96*classif_s/sqrt(Draws), TC, TC + 1.96*classif_s/sqrt(Draws));
+	}
+	for (n=0;n<Draws;n++) {
+		fclose(f[n]);
+		sprintf(buf,"%s.csv%d",nomfichier,n);
+		remove(buf);
+	}
+	fclose(fic);
+}
+
+
+int BanditForest::RoundRobin(int k, const vector<bool>& A)
+// Play the next remaining action in A
+{
+	int i=k+1;
+	
+	if (i >= K) i=0;
+	
+	while (i<K && A[i] != 1) {
+		i++;
+		if (i==K) i=0;
+	}
+
+	return i;
+}
+
+
+void BanditForest::PrintContext()
+// Print the current context oracle
+{
+	int i;
+	
+	for (i=0;i<M;i++) cout << x_courant[i] << "_"; 
+  //cout << "k=" << oracle[pos_current] << endl;
+}
+
+void BanditForest::GetContext(uint pos, uint bruit)
+// feed x_courant with x[pos] and apply the bit inversion noise (bruit %)
+{
+	int i;
+
+	for (i=0;i<M;i++) {
+		if ((uint)RAND_R(100.0)>= bruit) x_courant[i]=x.context(pos, i);
+		else x_courant[i]=1-x.context(pos,i);
+	}
+}
+
+
+int BanditForest::Decide_Vote(const std::vector<Tree*> &path)
+// return the action selected by voting
+{
+  vector<int> Votes(K);
+	for (int j=0;j<nbTree;j++) {
+		Votes[path[j]->getAction()] += 1;
+	}
+  return Votes.size() - 1 - (max_element(Votes.rbegin(), Votes.rend()) - Votes.rbegin());
+
+}
+
+
+int BanditForest::PlayOLDP3(const char *nomfichier) {
+	// KMD-Forest VE /AE Decide Vote
+	int c,j;
+	int Gain,Regret,TC;
+	FILE *fic;
+	char buf[1024];
+	int reward;
+
+  Forest = vector<Tree*>(nbTree);
+  vector<Tree*> path(nbTree);
+  vector<bool> A = vector<bool>(K, true);
+	x_courant = make_unique<short[]>(M);
+  uint dataset_size = x.getShape().first;
+
+	for (uint n = 0; n < Draws; n++) {
+    cout << "--- Draw nb : " << n+1 << " ---" << endl;
+		sprintf(buf,"%s.csv%d",nomfichier,n);
+		fic=fopen(buf,"w");
+		Gain=0;
+    Regret=0;
+    for (j=0;j<nbTree;j++) {
+      Forest[j] = new Tree();
+      Forest[j]->AllocPath({(uint)M}, 0);
+    }
+		c=1;
+		pos_current=(uint) RAND_R(dataset_size);
+		a_current=0;
+		TC=0;
+
+		for (uint t = 0; t < T; t++) {
+      if (t > 0 && t % (T/10) == 0) 
+        cout << "\tIteration " << t << " out of " << T << endl;
+      // Observer le vecteur de contexte xt
+			GetContext(pos_current,NOISE);
+      // Pour chaque 0 faire
+			for (j=0;j<nbTree;j++) {
+        // c0 = c0(xt)
+				path[j]=Forest[j]->TreeSearch(x_courant);
+        // si d0 != D0 ....
+        // si on est en VariableSelection et que l'arbre est à une profondeur maximale
+				if ((t >= TL && path[j]->getState() == VARIABLE_SELECTION) || (path[j]->getDepth() == path[j]->getMaxDepth() && path[j]->getState() == VARIABLE_SELECTION)) {
+          // cheminsTermines = 1
+          path[j]->ChangeState(ACTION_ELIMINATION);
+        }
+        // si l'arbre n'est pas à la profondeur max, mais qu'on est en VariableSelection
+				if (path[j]->getState() == VARIABLE_SELECTION) {
+					path[j]->setAction(RoundRobin(path[j]->getAction(),A));
+					//path[j]->setAction((path[j]->getAction() + 1) % K);
+				}
+        // sinon
+				if (path[j]->getState() == ACTION_ELIMINATION) {
+          path[j]->setAction(RoundRobin(path[j]->getAction(),path[j]->getAD()));
+        }
+        // Si cheminsTerminés
+				if (path[j]->getState() == EXPLOIT) {
+          path[j]->setAction(path[j]->getK());
+        }
+			}
+      // Jouer le bras k et obtenir la récompense yk(t)
+			a_current=Decide_Vote(path);
+			reward=(x.best_arm(pos_current) == a_current);
+      // Pour chaque 0 faire
+			for (j=0;j<nbTree;j++) {
+        // t = t+1 on incrémente le temps local du noeud
+				if (path[j]->getState() == VARIABLE_SELECTION) {
+          path[j]->UpdatePath(reward, a_current, x_courant);
+          // Sinon
+          if (a_current == K-1) {
+            // S = VE
+            path[j]->TreeBuild();
+          }
+        }
+        // si c0 = D0
+				if (path[j]->getState() == ACTION_ELIMINATION) {
+          // S = AE
+				  if (path[j]->getAD()[a_current] == ACTION_ELIMINATION) {
+            path[j]->UpdateLeaf(reward,a_current);
+          }
+          // Dans AE : Si k = Dernier(St)
+					if (a_current == path[j]->LastAction()) {
+            path[j]->ActionElimination();
+          }
+				}
+			}
+
+      TC += reward;
+      Gain += reward;
+      Regret += 1 - reward;
+
+			if (c == TimeDisplay) {
+        fprintf(fic,"%d;%d;%d;%f\n",t+1,Regret,Gain,TC/(float)TimeDisplay);
+        c=1;
+        TC=0;
+			}
+			else c++;
+      pos_current = (pos_current + 1) % CONTEXTS_NB;
+		}
+		fclose(fic);
+		for (j=0;j<nbTree;j++) Forest[j]->FreeKMD();
+	}
+
+	SaveResults_Gain(nomfichier);
+
+	return 1;
+}

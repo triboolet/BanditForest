@@ -1,0 +1,17 @@
+DATA_FILE=../Examples/Adult3.txt
+K=14
+M=82
+CONTEXTS_NB=48842
+Dmin=10
+Dmax=18
+T=5000
+TL=5000
+TimeDisplay=100
+delta=0.05
+epsilonMin=0.4
+epsilonMax=0.8
+c=4.0
+Draws=2
+nbTree=25
+L=65
+NOISE=5

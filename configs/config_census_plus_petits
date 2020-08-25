@@ -1,0 +1,17 @@
+DATA_FILE=../Examples/Census3.txt
+K=18
+M=255
+CONTEXTS_NB=2458285
+Dmin=5
+Dmax=10
+T=300000
+TL=300000
+TimeDisplay=1000
+delta=0.05
+epsilonMin=0.4
+epsilonMax=0.8
+c=4.0
+Draws=10
+nbTree=25
+L=204
+NOISE=5

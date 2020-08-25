@@ -1,0 +1,17 @@
+DATA_FILE=../Examples/Forest3.txt
+K=7
+M=94 
+CONTEXTS_NB=581012
+Dmin=10
+Dmax=18
+T=10000000
+TL=10000000
+TimeDisplay=1000
+delta=0.05
+epsilonMin=0.4
+epsilonMax=0.8
+c=4.0
+Draws=10
+nbTree=100
+L=75
+NOISE=5
