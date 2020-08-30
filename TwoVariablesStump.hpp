@@ -9,12 +9,12 @@
 class TwoVariablesStump : public Stump {
   public:
     TwoVariablesStump() {}
-    void updatePath(int reward, int action, const std::vector<short> &x_courant);
-    void treeBuild(const std::vector<float>& ta, short D, short d, float epsilon);
-    void allocPath(const std::vector<uint> &variables, short d);
-    std::vector<short> computeYk();
+    void updatePath(int reward, int action, const std::vector<short> &current_context);
+    void treeBuild(const std::vector<float>& ta, short max_depth, short depth, float epsilon);
+    void allocPath(const std::vector<uint> &variables, short depth);
+    std::vector<short> computeRewardsPerAction();
     void free();
-    Tree* nextTree(const std::vector<short> &x_courant);
+    Tree* nextTree(const std::vector<short> &current_context);
     void freeNextTrees();
 
     int getVar() const;
@@ -23,9 +23,9 @@ class TwoVariablesStump : public Stump {
     short var[2];
 
     std::vector<std::vector<bool>> remainingVariables;
-    std::vector<std::vector<std::vector<short>>> y;
-    std::vector<std::vector<std::vector<short>>> tk;
-    std::vector<std::vector<float>> yp;
+    std::vector<std::vector<std::vector<short>>> rewardsPerVariablesPerValue;
+    std::vector<std::vector<std::vector<short>>> drawsPerVariablesPerValue;
+    std::vector<std::vector<float>> meanRewardPerVariable;
     bool isRemaining(uint variable1, uint variable2);
     Tree* next[2][2];
 };

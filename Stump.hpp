@@ -9,12 +9,12 @@ class Stump {
   public:
     Stump() {}
     virtual ~Stump() {}
-    virtual void updatePath(int reward, int action, const std::vector<short> &x_courant) = 0;
-    virtual void treeBuild(const std::vector<float>& ta, short D, short d, float epsilon) = 0;
-    virtual void allocPath(const std::vector<uint> &variables, short d) = 0;
-    virtual std::vector<short> computeYk() = 0;
+    virtual void updatePath(int reward, int action, const std::vector<short> &current_context) = 0;
+    virtual void treeBuild(const std::vector<float>& ta, short max_depth, short depth, float epsilon) = 0;
+    virtual void allocPath(const std::vector<uint> &variables, short depth) = 0;
+    virtual std::vector<short> computeRewardsPerAction() = 0;
     virtual void free() = 0;
-    virtual Tree* nextTree(const std::vector<short> &x_courant) = 0;
+    virtual Tree* nextTree(const std::vector<short> &current_context) = 0;
     virtual void freeNextTrees() = 0;
 
     virtual int getVar() const = 0;

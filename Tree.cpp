@@ -18,15 +18,12 @@ Tree::~Tree() {
 
 }
 
+
 void Tree::changeState(State target_state)
-// change state 0 -> 1 -> 2
-// 0 : Variable Selection
-// 1 : Action Selection
-// 2 : Exploit 
 {
 	if (target_state > state ) {
 		state=target_state;
-    // si on passe de Variable à ActionSelection
+    // if we go from VARIABLE_SELECTION to ACTION_ELIMINATION
 		if (target_state == ACTION_ELIMINATION) {
 			lastPlayedAction = (int)RAND_R((float)K);
 			remainingActions = vector<bool>(K, true);
@@ -37,7 +34,7 @@ void Tree::changeState(State target_state)
       }
       bestStump = NULL;
 		}
-    // Si on passe à Exploit
+    // if we go from ACTION_ELIMINATION to EXPLOIT
 		if (target_state == EXPLOIT) {
 			rewardsPerAction.clear();
       rewardsPerAction.shrink_to_fit();
@@ -51,55 +48,50 @@ void Tree::changeState(State target_state)
 
 
 void Tree::freeKMD()
-// free the tree
 {
-
+  // Frees nodes recursively if not terminal
   if (depth < max_depth) {
     for (auto stump : stumps) {
       stump->freeNextTrees();
     }
-    freePath();
-    delete this; 
-  } else {
-		freePath();
-		delete this;
-	}
+  }
+  freePath();
+  delete this;
 }
 
 void Tree::freePath()
-// free the path
 {
 	if (state == VARIABLE_SELECTION) {
     for (auto stump : stumps) {
       stump->free();
       delete stump;
     }
-    drawsPerAction.clear();
-    drawsPerAction.shrink_to_fit();
 	}
 	if (state == ACTION_ELIMINATION) {
 		rewardsPerAction.clear();
     rewardsPerAction.shrink_to_fit();
 		remainingActions.clear();
     remainingActions.shrink_to_fit();
-    drawsPerAction.clear();
-    drawsPerAction.shrink_to_fit();
 	}
+  drawsPerAction.clear();
+  drawsPerAction.shrink_to_fit();
 }
 
 
 
-void Tree::allocPath(const std::vector<uint> variables, int d)
+void Tree::allocPath(const std::vector<uint> variables, short depth)
 // allocate a new path
 {
-	this->depth=d;
+	this->depth=depth;
 	bestAction=0;
+
 	lastPlayedAction = (int)RAND_R((float)K);
 	max_depth=(int)(RAND_R((float)(D_MAX - D_MIN)))+D_MIN;
-	drawsPerAction = vector<float>(K, 1.0);
 	epsilon = RAND_R((float)(EPSILON_MAX - EPSILON_MIN))+EPSILON_MIN;
-	state = VARIABLE_SELECTION;
+
+	drawsPerAction = vector<float>(K, 1.0);
   bestStump = NULL;
+	state = VARIABLE_SELECTION;
   if (depth < max_depth) {
     if (VARIABLE_SELECTION_ALG == 1) {
       stumps.push_back(new OneVariableStump());
@@ -120,14 +112,16 @@ void Tree::allocPath(const std::vector<uint> variables, int d)
   }
 }
 
-Tree* Tree::treeSearch(const std::vector<short> &x_courant)
+Tree* Tree::treeSearch(const std::vector<short> &current_context)
 // Return the path corresponding to the current context
 {
   Tree* tree = this;
   Stump* stump = tree->getBestStump();
 
+  // While it's not a terminal node and it is finished selecting variables, we can go
+  // deeper
 	while (tree->getDepth() < tree->getMaxDepth() && stump != NULL && stump->getVar() != -1){
-		tree = stump->nextTree(x_courant);
+		tree = stump->nextTree(current_context);
     stump = tree->getBestStump();
 	}
 	
@@ -135,22 +129,20 @@ Tree* Tree::treeSearch(const std::vector<short> &x_courant)
 }
 
 
-void Tree::updatePath(int y,int k, const std::vector<short> &x_courant)
-// Update the counts for variable selection
+void Tree::updatePath(int reward, int action, const std::vector<short> &current_context)
 {
-	drawsPerAction[k]=drawsPerAction[k]+1;
+	drawsPerAction[action]=drawsPerAction[action]+1;
   for (auto stump : stumps) {
-    stump->updatePath(y, k, x_courant);
+    stump->updatePath(reward, action, current_context);
   }
 }
 
-void Tree::updateLeaf(int y,int k) {
-	drawsPerAction[k]=drawsPerAction[k]+1;
-	rewardsPerAction[k]=rewardsPerAction[k]+y;
+void Tree::updateLeaf(int reward,int action) {
+	drawsPerAction[action] = drawsPerAction[action] + 1;
+	rewardsPerAction[action] = rewardsPerAction[action] + reward;
 }
 
 void Tree::actionElimination()
-// Action elimination AE
 {
 	int a;
 	int max;
@@ -160,16 +152,16 @@ void Tree::actionElimination()
 	max=0;b=0;
 	for (a=0;a<K;a++) {
 		if (remainingActions[a]) {
-			if (rewardsPerAction[a]/(float)drawsPerAction[a] > max/(float)drawsPerAction[b]) {
+			if (rewardsPerAction[a]/drawsPerAction[a] > max/drawsPerAction[b]) {
 				max=rewardsPerAction[a];
 				b=a;
 			}
-			alpha[a]=sqrt(0.5/(float)drawsPerAction[a]*log((FACTOR_A*(float)(drawsPerAction[a]*drawsPerAction[a]))))/C;
+			alpha[a]=sqrt(0.5/drawsPerAction[a]*log((FACTOR_A*(drawsPerAction[a]*drawsPerAction[a]))))/C;
 		}
 	}
   for (a = 0; a < K; a++) {
 		if (remainingActions[a] && a!=b) {
-			if (max/(float)drawsPerAction[b] - rewardsPerAction[a]/(float)drawsPerAction[a] + epsilon>= alpha[a]+alpha[b]) {
+			if (max/drawsPerAction[b] - rewardsPerAction[a]/drawsPerAction[a] + epsilon>= alpha[a]+alpha[b]) {
 				remainingActions[a]=false;
 			}
 		}
@@ -180,7 +172,7 @@ void Tree::actionElimination()
 	}
 }
 
-void Tree::treeBuild()
+void Tree::variableElimination()
 // Build the tree - variable elimination
 {
   for (auto stump : stumps) {
@@ -220,7 +212,7 @@ short Tree::getAction() const {
   return lastPlayedAction;
 }
 
-vector<bool> Tree::getAD() const {
+vector<bool> Tree::getRemainingActions() const {
   return remainingActions;
 }
 

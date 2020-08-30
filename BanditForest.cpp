@@ -170,7 +170,7 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
 				}
         // sinon
 				if (path[j]->getState() == ACTION_ELIMINATION) {
-          path[j]->setAction(RoundRobin(path[j]->getAction(),path[j]->getAD()));
+          path[j]->setAction(RoundRobin(path[j]->getAction(),path[j]->getRemainingActions()));
         }
         // Si cheminsTerminés
 				if (path[j]->getState() == EXPLOIT) {
@@ -208,13 +208,13 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
           // Sinon
           if (a_current == K-1) {
             // S = VE
-            path[j]->treeBuild();
+            path[j]->variableElimination();
           }
         }
         // si c0 = D0
 				if (path[j]->getState() == ACTION_ELIMINATION) {
           // S = AE
-				  if (path[j]->getAD()[a_current]==1) {
+				  if (path[j]->getRemainingActions()[a_current]==1) {
             path[j]->updateLeaf(r_hat,a_current);
           }
           // Dans AE : Si k = Dernier(St)

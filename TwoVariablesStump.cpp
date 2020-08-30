@@ -9,13 +9,13 @@
 
 using namespace std;
 
-void TwoVariablesStump::updatePath(int reward, int action, const std::vector<short> &x_courant) {
+void TwoVariablesStump::updatePath(int reward, int action, const std::vector<short> &current_context) {
   for (int i = 0; i < M; i++) {
     for (int j = 0; j < M; j++) {
       if (isRemaining(i,j)) {
-        short variableValue = x_courant[i];
-        y[i][j][action*2 + variableValue] += reward;
-        tk[i][j][action*2 + variableValue] += 1;
+        short variableValue = current_context[i];
+        rewardsPerVariablesPerValue[i][j][action*2 + variableValue] += reward;
+        drawsPerVariablesPerValue[i][j][action*2 + variableValue] += 1;
       }
     }
   }
@@ -28,12 +28,12 @@ void TwoVariablesStump::treeBuild(const std::vector<float>& ta, short D, short d
 	for (int i=0;i<M;i++) {
     for (int j = 0; j < M; j++) {
       if (isRemaining(i,j)) {
-        yp[i][j]=0.0;
+        meanRewardPerVariable[i][j]=0.0;
         // pour chaque v \in {0,1} faire
         for (int q=0;q<2;q++) {
           maxk=0.0;amax=0;
           for (int a=0;a<K;a++) {
-            float meanReward = (float)y[i][j][a*2+q]/(float)tk[i][j][a*2+q];
+            float meanReward = (float)rewardsPerVariablesPerValue[i][j][a*2+q]/(float)drawsPerVariablesPerValue[i][j][a*2+q];
             if (meanReward >= maxk) {
               maxk=meanReward;
               amax=a;
@@ -41,12 +41,10 @@ void TwoVariablesStump::treeBuild(const std::vector<float>& ta, short D, short d
           }
           // Borne de l'équation 5.1
           alphavar[i][j] += sqrt(0.5/ta[amax]*log(FACTOR_V*(D*ta[amax]*ta[amax])))/C;
-          // yp = \mu_k_v_i ou \mu_i, bref le mean reward pour la variable i
-          yp[i][j] += y[i][j][amax*2+q]/ta[amax];
-          //yp[i]=yp[i] + maxk;
+          meanRewardPerVariable[i][j] += rewardsPerVariablesPerValue[i][j][amax*2+q]/ta[amax];
         }
-        if (yp[i][j] >= maxp) {
-          maxp=yp[i][j];
+        if (meanRewardPerVariable[i][j] >= maxp) {
+          maxp=meanRewardPerVariable[i][j];
           ip = i;
           ip2 = j;
         }
@@ -59,7 +57,7 @@ void TwoVariablesStump::treeBuild(const std::vector<float>& ta, short D, short d
     for (int j = 0; j < M; j++) {
       if (isRemaining(i,j) && (i != ip && j != ip2)) {
         // Retirer de S les variables sous-optimales suivant l'équation (5.1)
-        if (maxp - yp[i][j] + epsilon >= alphavar[i][j]+alphavar[ip][ip2]) {
+        if (maxp - meanRewardPerVariable[i][j] + epsilon >= alphavar[i][j]+alphavar[ip][ip2]) {
           remainingVariables[i][j] = false;
         }
         else NbSon=NbSon+1;
@@ -85,9 +83,9 @@ void TwoVariablesStump::treeBuild(const std::vector<float>& ta, short D, short d
 
 void TwoVariablesStump::allocPath(const std::vector<uint>& variables, short d) {
   remainingVariables = vector<vector<bool>>(M, vector<bool>(M, true));
-  yp = vector<vector<float>>(M, vector<float>(M));
-  y = vector<vector<vector<short>>>(M);
-  tk = vector<vector<vector<short>>>(M);
+  meanRewardPerVariable = vector<vector<float>>(M, vector<float>(M));
+  rewardsPerVariablesPerValue = vector<vector<vector<short>>>(M);
+  drawsPerVariablesPerValue = vector<vector<vector<short>>>(M);
   var[0] = -1, var[1] = -1;
   if (variables[0] < remainingVariables.size()) {
     remainingVariables[variables[0]][variables[1]] = false;
@@ -96,27 +94,27 @@ void TwoVariablesStump::allocPath(const std::vector<uint>& variables, short d) {
   for (int i=0; i<M; i++) {
     for (int j = 0; j < M; j++) {
       if (remainingVariables[i][j]) {
-        if (y[i].size() == 0) {
-          y[i] = vector<vector<short>>(M);
+        if (rewardsPerVariablesPerValue[i].size() == 0) {
+          rewardsPerVariablesPerValue[i] = vector<vector<short>>(M);
         }
-        y[i][j] = vector<short>(2*K);
-        if (tk[i].size() == 0) {
-          tk[i] = vector<vector<short>>(M);
+        rewardsPerVariablesPerValue[i][j] = vector<short>(2*K);
+        if (drawsPerVariablesPerValue[i].size() == 0) {
+          drawsPerVariablesPerValue[i] = vector<vector<short>>(M);
         }
-        tk[i][j] = vector<short>(2*K, 1);
+        drawsPerVariablesPerValue[i][j] = vector<short>(2*K, 1);
       }
     }
   }
 }
 
-std::vector<short> TwoVariablesStump::computeYk() {
+std::vector<short> TwoVariablesStump::computeRewardsPerAction() {
   auto yk=vector<short>(K);
   for (int i=0;i<M;i++) {
     for (int j = 0; j < M; j++) {
       if (isRemaining(i,j)) {
         for (int s=0;s<2;s++) {
           for (int a=0;a<K;a++) {
-            yk[a] += y[i][j][a*2+s];
+            yk[a] += rewardsPerVariablesPerValue[i][j][a*2+s];
           }
         }
       }
@@ -126,28 +124,28 @@ std::vector<short> TwoVariablesStump::computeYk() {
 }
 
 void TwoVariablesStump::free() {
-  for (uint i = 0; i < y.size(); i++) {
-    for (uint j = 0; j < y[i].size(); j++) {
-      y[i][j].clear();
-      y[i][j].shrink_to_fit();
-      tk[i][j].clear();
-      tk[i][j].shrink_to_fit();
+  for (uint i = 0; i < rewardsPerVariablesPerValue.size(); i++) {
+    for (uint j = 0; j < rewardsPerVariablesPerValue[i].size(); j++) {
+      rewardsPerVariablesPerValue[i][j].clear();
+      rewardsPerVariablesPerValue[i][j].shrink_to_fit();
+      drawsPerVariablesPerValue[i][j].clear();
+      drawsPerVariablesPerValue[i][j].shrink_to_fit();
     }
-    y[i].clear();
-    y[i].shrink_to_fit();
-    tk[i].clear();
-    tk[i].shrink_to_fit();
+    rewardsPerVariablesPerValue[i].clear();
+    rewardsPerVariablesPerValue[i].shrink_to_fit();
+    drawsPerVariablesPerValue[i].clear();
+    drawsPerVariablesPerValue[i].shrink_to_fit();
   }
-  y.clear();
-  y.shrink_to_fit();
-  tk.clear();
-  tk.shrink_to_fit();
-  for (auto vec : yp) {
+  rewardsPerVariablesPerValue.clear();
+  rewardsPerVariablesPerValue.shrink_to_fit();
+  drawsPerVariablesPerValue.clear();
+  drawsPerVariablesPerValue.shrink_to_fit();
+  for (auto vec : meanRewardPerVariable) {
     vec.clear();
     vec.shrink_to_fit();
   }
-  yp.clear();
-  yp.shrink_to_fit();
+  meanRewardPerVariable.clear();
+  meanRewardPerVariable.shrink_to_fit();
   for (auto vec : remainingVariables) {
     vec.clear();
     vec.shrink_to_fit();
