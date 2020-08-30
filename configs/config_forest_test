@@ -1,4 +1,4 @@
-DATA_FILE=../Examples/Forest3.txt
+DATA_FILE=./datasets/forest.txt
 K=7
 M=94 
 CONTEXTS_NB=581012

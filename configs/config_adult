@@ -1,4 +1,4 @@
-DATA_FILE=../Examples/Adult3.txt
+DATA_FILE=./datasets/Adult3.txt
 K=14
 M=82
 CONTEXTS_NB=48842
