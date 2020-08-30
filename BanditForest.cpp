@@ -139,7 +139,7 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
     Regret=0;
     for (j=0;j<NB_TREE;j++) {
       Forest[j] = new Tree();
-      Forest[j]->AllocPath({(uint)M}, 0);
+      Forest[j]->allocPath({(uint)M}, 0);
     }
 		c=1;
     uint dataset_size = dataset.getShape().first;
@@ -156,12 +156,12 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
       // Pour chaque 0 faire
 			for (j=0;j<NB_TREE;j++) {
         // c0 = c0(xt)
-				path[j]=Forest[j]->TreeSearch(x_courant);
+				path[j]=Forest[j]->treeSearch(x_courant);
         // si d0 != D0 ....
         // si on est en VariableSelection et que l'arbre est à une profondeur maximale
 				if ((t >= TL && path[j]->getState() == VARIABLE_SELECTION) || (path[j]->getDepth() == path[j]->getMaxDepth() && path[j]->getState() == VARIABLE_SELECTION)) {
           // cheminsTermines = 1
-          path[j]->ChangeState(ACTION_ELIMINATION);
+          path[j]->changeState(ACTION_ELIMINATION);
         }
         // si l'arbre n'est pas à la profondeur max, mais qu'on est en VariableSelection
 				if (path[j]->getState() == VARIABLE_SELECTION) {
@@ -185,10 +185,10 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
           if (changePointDetectors.find(path[j]) != changePointDetectors.end() && changePointDetectors[path[j]]->update(t, dataset.best_arm(pos_current))) {
             for (auto &it : changePointDetectors) delete it.second;
             changePointDetectors.clear();
-		        for (j=0;j<NB_TREE;j++) Forest[j]->FreeKMD();
+		        for (j=0;j<NB_TREE;j++) Forest[j]->freeKMD();
             for (j=0;j<NB_TREE;j++) {
               Forest[j] = new Tree();
-              Forest[j]->AllocPath({(uint)M}, 0);
+              Forest[j]->allocPath({(uint)M}, 0);
             }
             to_continue = true;
             break;
@@ -204,22 +204,22 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
 			for (j=0;j<NB_TREE;j++) {
         // t = t+1 on incrémente le temps local du noeud
 				if (path[j]->getState() == VARIABLE_SELECTION) {
-          path[j]->UpdatePath(reward, a_current, x_courant);
+          path[j]->updatePath(reward, a_current, x_courant);
           // Sinon
           if (a_current == K-1) {
             // S = VE
-            path[j]->TreeBuild();
+            path[j]->treeBuild();
           }
         }
         // si c0 = D0
 				if (path[j]->getState() == ACTION_ELIMINATION) {
           // S = AE
 				  if (path[j]->getAD()[a_current]==1) {
-            path[j]->UpdateLeaf(r_hat,a_current);
+            path[j]->updateLeaf(r_hat,a_current);
           }
           // Dans AE : Si k = Dernier(St)
-					if (a_current == path[j]->LastAction()) {
-            path[j]->ActionElimination();
+					if (a_current == path[j]->lastAction()) {
+            path[j]->actionElimination();
             if (changePointDetectors.size() < 3 && path[j]->getState() == EXPLOIT) {
               changePointDetectors[path[j]] = new RBOCPD(T-t, path[j]->getK());
             }
@@ -245,7 +245,7 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
       }
 		}
 		fclose(fic);
-		for (j=0;j<NB_TREE;j++) Forest[j]->FreeKMD();
+		for (j=0;j<NB_TREE;j++) Forest[j]->freeKMD();
     for (auto &it : changePointDetectors) delete it.second;
     changePointDetectors.clear();
 	}

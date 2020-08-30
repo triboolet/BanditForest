@@ -76,7 +76,7 @@ void TwoVariablesStump::treeBuild(const std::vector<float>& ta, short D, short d
 		for (uint q=0; q<2; q++) {
       for (uint r = 0; r < 2; r++) {
           next[q][r] = new Tree();
-          next[q][r]->AllocPath({(uint)ip, (uint)ip2}, d+1);
+          next[q][r]->allocPath({(uint)ip, (uint)ip2}, d+1);
 		  }
     }
 		free();
@@ -164,7 +164,7 @@ void TwoVariablesStump::freeNextTrees() {
   if (var[0] != -1) {
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 2; j++) {
-        next[i][j]->FreeKMD();
+        next[i][j]->freeKMD();
       }
     }
   }

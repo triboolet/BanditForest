@@ -112,7 +112,7 @@ void OneVariableStump::treeBuild(const std::vector<float>& ta, short D, short d,
     // CreationNoeud(0, c0 + {S, 0})
 		for (int q=0; q<2; q++) {
         next[q] = new Tree();
-				next[q]->AllocPath({(uint)ip}, d+1);
+				next[q]->allocPath({(uint)ip}, d+1);
 		}
 		free();
 	}
@@ -174,7 +174,7 @@ Tree* OneVariableStump::nextTree(const std::vector<short> &x_courant) {
 void OneVariableStump::freeNextTrees() {
   if (var != -1) {
     for (int i = 0; i < 2; i++) {
-      next[i]->FreeKMD();
+      next[i]->freeKMD();
     }
   }
 }

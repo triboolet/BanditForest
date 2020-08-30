@@ -16,15 +16,15 @@ class Tree {
   ~Tree();
 
 
-  void ChangeState(State target_state);
-  void FreePath();
-  void FreeKMD();
-  void AllocPath(const std::vector<uint> variables, int d);
-  Tree* TreeSearch(const std::vector<short> &x_courant);
-  void UpdatePath(int y,int k, const std::vector<short> &x_courant);
-  void UpdateLeaf(int y,int k);
-  void ActionElimination();
-  void TreeBuild();
+  void changeState(State target_state);
+  void freePath();
+  void freeKMD();
+  void allocPath(const std::vector<uint> variables, int d);
+  Tree* treeSearch(const std::vector<short> &x_courant);
+  void updatePath(int y,int k, const std::vector<short> &x_courant);
+  void updateLeaf(int y,int k);
+  void actionElimination();
+  void treeBuild();
 
   void setAction(short newAction);
 
@@ -34,7 +34,7 @@ class Tree {
   short getAction() const;
   std::vector<bool> getAD() const;
   short getK() const;
-  int LastAction() const;
+  int lastAction() const;
   Stump* getBestStump() const;
 
   private:
@@ -43,9 +43,9 @@ class Tree {
 	short max_depth; // maximum depth
 
 	// variables
-	short d; 	// depth
-	short k; 	// best action
-	short a;	// last played action (for the round-robin)
+	short depth; 	// depth
+	short bestAction; 	// best action
+	short lastPlayedAction;	// last played action (for the round-robin)
 	State state; // state=0 variable selection, =1 action selection, =2 exploit
 
   // When state == VariableSelection
@@ -53,9 +53,9 @@ class Tree {
   Stump* bestStump;
 
 	// Counts for state = 1
-  std::vector<float> ta; // Number of draws of each action
-  std::vector<short> yk;	// Sum of reward of each action
-  std::vector<bool> AD;	// set of remaining actions
+  std::vector<float> drawsPerAction; // Number of draws of each action
+  std::vector<short> rewardsPerAction;	// Sum of reward of each action
+  std::vector<bool> remainingActions;	// set of remaining actions
 };
 
 #endif
