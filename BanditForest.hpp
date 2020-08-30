@@ -16,14 +16,13 @@ class BanditForest {
 
   void SaveResults_Gain(const char* nomfichier);
   int RoundRobin(int k, const std::vector<bool>& A);
-  void PrintContext();
   void GetContext(uint pos, uint bruit);
   int Decide_Vote(Tree **p);
   int PlayOLDP3(const char *nomfichier);
 
   private:
-  std::unique_ptr<short[]> x_courant;
-  Dataset x;
+  std::vector<short> x_courant;
+  Dataset dataset;
   uint pos_current;
   int a_current;
   Tree** Forest;

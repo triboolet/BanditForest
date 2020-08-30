@@ -11,7 +11,7 @@
 using namespace std;
 
 
-void OneVariableStump::updatePath(int reward, int action, const unique_ptr<short[]> &x_courant) {
+void OneVariableStump::updatePath(int reward, int action, const std::vector<short> &x_courant) {
   for (uint i = 0; i < remainingVariables.size(); i++) {
     if (isRemaining(i)) {
       short variableValue = x_courant[i];
@@ -37,16 +37,16 @@ void OneVariableStump::treeBuild(const std::vector<float>& ta, short D, short d,
       int amax_even = max_it_even - begin(evenMus), amax_odd = max_it_odd - begin(oddMus);
       alphavar[i] += (
           sqrt(0.5/ta[amax_even]
-            *log(factorV
+            *log(FACTOR_V
               *(D*ta[amax_even]
                 *ta[amax_even])))
-          /c);
+          /C);
       alphavar[i] += (
           sqrt(0.5/ta[amax_odd]
-            *log(factorV
+            *log(FACTOR_V
               *(D*ta[amax_odd]
                 *ta[amax_odd])))
-          /c);
+          /C);
       yp[i] += y[i][amax_even*2+0]/ta[amax_even] + y[i][amax_odd*2+1]/ta[amax_odd];
       if (yp[i] >= maxp) {
         maxp=yp[i];
@@ -167,7 +167,7 @@ void OneVariableStump::free() {
   remainingVariables.clear();
 }
 
-Tree* OneVariableStump::nextTree(const std::unique_ptr<short[]> &x_courant) {
+Tree* OneVariableStump::nextTree(const std::vector<short> &x_courant) {
   return next[x_courant[var]];
 }
 

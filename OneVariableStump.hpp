@@ -8,12 +8,12 @@
 class OneVariableStump : public Stump {
   public:
     OneVariableStump() {}
-    void updatePath(int reward, int action, const std::unique_ptr<short[]> &x_courant);
+    void updatePath(int reward, int action, const std::vector<short> &x_courant);
     void treeBuild(const std::vector<float>& ta, short D, short d, float epsilon);
     void allocPath(const std::vector<uint> &variables, short d);
     std::vector<short> computeYk();
     void free();
-    Tree* nextTree(const std::unique_ptr<short[]> &x_courant);
+    Tree* nextTree(const std::vector<short> &x_courant);
     void freeNextTrees();
 
     int getVar() const;

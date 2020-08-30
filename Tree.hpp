@@ -20,8 +20,8 @@ class Tree {
   void FreePath();
   void FreeKMD();
   void AllocPath(const std::vector<uint> variables, int d);
-  Tree* TreeSearch(const std::unique_ptr<short[]> &x_courant);
-  void UpdatePath(int y,int k, std::unique_ptr<short[]> &x_courant);
+  Tree* TreeSearch(const std::vector<short> &x_courant);
+  void UpdatePath(int y,int k, const std::vector<short> &x_courant);
   void UpdateLeaf(int y,int k);
   void ActionElimination();
   void TreeBuild();
@@ -40,7 +40,7 @@ class Tree {
   private:
 	// Randomized parameter
   float epsilon;
-	short D; // maximum depth
+	short max_depth; // maximum depth
 
 	// variables
 	short d; 	// depth

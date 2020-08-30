@@ -54,7 +54,7 @@ void Tree::FreeKMD()
 // free the tree
 {
 
-  if (d < D) {
+  if (d < max_depth) {
     for (auto stump : stumps) {
       stump->freeNextTrees();
     }
@@ -98,12 +98,12 @@ void Tree::AllocPath(const std::vector<uint> variables, int d)
 	this->d=d;
 	k=0;
 	a=(int)RAND_R((float)K);
-	D=(int)(RAND_R((float)(Dmax-Dmin)))+Dmin;
+	max_depth=(int)(RAND_R((float)(D_MAX - D_MIN)))+D_MIN;
 	ta = vector<float>(K, 1.0);
-	epsilon = RAND_R((float)(epsilonMax-epsilonMin))+epsilonMin;
+	epsilon = RAND_R((float)(EPSILON_MAX - EPSILON_MIN))+EPSILON_MIN;
 	state = VARIABLE_SELECTION;
   bestStump = NULL;
-  if (d < D) {
+  if (d < max_depth) {
     if (VARIABLE_SELECTION_ALG == 1) {
       stumps.push_back(new OneVariableStump());
     } else if (VARIABLE_SELECTION_ALG == 2) {
@@ -119,10 +119,11 @@ void Tree::AllocPath(const std::vector<uint> variables, int d)
   } else {
     state = ACTION_ELIMINATION;
     AD=vector<bool>(K, true);
+    yk = vector<short>(K, 0);
   }
 }
 
-Tree* Tree::TreeSearch(const unique_ptr<short[]> &x_courant)
+Tree* Tree::TreeSearch(const std::vector<short> &x_courant)
 // Return the path corresponding to the current context
 {
   Tree* tree = this;
@@ -137,7 +138,7 @@ Tree* Tree::TreeSearch(const unique_ptr<short[]> &x_courant)
 }
 
 
-void Tree::UpdatePath(int y,int k, unique_ptr<short[]> &x_courant)
+void Tree::UpdatePath(int y,int k, const std::vector<short> &x_courant)
 // Update the counts for variable selection
 {
 	ta[k]=ta[k]+1;
@@ -166,7 +167,7 @@ void Tree::ActionElimination()
 				max=yk[a];
 				b=a;
 			}
-			alpha[a]=sqrt(0.5/(float)ta[a]*log((factorA*(float)(ta[a]*ta[a]))))/c;
+			alpha[a]=sqrt(0.5/(float)ta[a]*log((FACTOR_A*(float)(ta[a]*ta[a]))))/C;
 		}
 	}
   for (a = 0; a < K; a++) {
@@ -186,7 +187,7 @@ void Tree::TreeBuild()
 // Build the tree - variable elimination
 {
   for (auto stump : stumps) {
-    stump->treeBuild(ta, D, d, epsilon);
+    stump->treeBuild(ta, max_depth, d, epsilon);
     if (stump->getVar() != -1) {
       bestStump = stump;
       for (auto stump : stumps) {
@@ -211,7 +212,7 @@ short Tree::getDepth() const {
 }
 
 short Tree::getMaxDepth() const {
-  return D;
+  return max_depth;
 }
 
 State Tree::getState() const {

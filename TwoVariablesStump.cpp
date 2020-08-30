@@ -9,7 +9,7 @@
 
 using namespace std;
 
-void TwoVariablesStump::updatePath(int reward, int action, const unique_ptr<short[]> &x_courant) {
+void TwoVariablesStump::updatePath(int reward, int action, const std::vector<short> &x_courant) {
   for (int i = 0; i < M; i++) {
     for (int j = 0; j < M; j++) {
       if (isRemaining(i,j)) {
@@ -40,7 +40,7 @@ void TwoVariablesStump::treeBuild(const std::vector<float>& ta, short D, short d
             }
           }
           // Borne de l'équation 5.1
-          alphavar[i][j] += sqrt(0.5/ta[amax]*log(factorV*(D*ta[amax]*ta[amax])))/c;
+          alphavar[i][j] += sqrt(0.5/ta[amax]*log(FACTOR_V*(D*ta[amax]*ta[amax])))/C;
           // yp = \mu_k_v_i ou \mu_i, bref le mean reward pour la variable i
           yp[i][j] += y[i][j][amax*2+q]/ta[amax];
           //yp[i]=yp[i] + maxk;
@@ -156,7 +156,7 @@ void TwoVariablesStump::free() {
   remainingVariables.shrink_to_fit();
 }
 
-Tree* TwoVariablesStump::nextTree(const std::unique_ptr<short[]> &x_courant) {
+Tree* TwoVariablesStump::nextTree(const std::vector<short> &x_courant) {
   return next[x_courant[var[0]]][x_courant[var[1]]];
 }
 

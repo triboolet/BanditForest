@@ -23,9 +23,9 @@ int main(int argc, char* argv[]) {
   }
   load_everything(argv[1]);
 
-  Dataset d = Dataset(DATA_FILE, M, CONTEXTS_NB);
+  Dataset dataset = Dataset(DATA_FILE, M, CONTEXTS_NB);
     
-  BanditForest b = BanditForest(d);
+  BanditForest b(dataset);
   b.PlayOLDP3(resultsFileName.c_str());
   
   return 0;

@@ -9,6 +9,5 @@ enum State {
 };
 
 float RAND_R(float x);
-int Card(const std::vector<bool>& Ad);
 
 #endif

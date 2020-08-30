@@ -11,7 +11,7 @@
 using namespace std;
 
 BanditForest::BanditForest(Dataset d) {
-  x = d;
+  dataset = d;
 }
 
 BanditForest::~BanditForest() {
@@ -23,7 +23,6 @@ void BanditForest::SaveResults_Gain(const char *nomfichier)
 // Build the result file
 // format: t \t mean sum of rewards - CI \t mean sum of rewards \t mean sum of rewards + CI
 {
-  cout << nomfichier << "in save";
 	int t,n,i;
 	float Regret,Gain,TC;
   unique_ptr<int[]> r(new int[M]), g(new int[M]);
@@ -33,7 +32,7 @@ void BanditForest::SaveResults_Gain(const char *nomfichier)
 	char buf[1024];
 	float classif_s,r_s,s;
 	
-	for (n=0;n<Draws;n++) {
+	for (n=0;n<DRAWS;n++) {
 		sprintf(buf,"%s.csv%d",nomfichier,n);
 		f[n]=fopen(buf,"r"); 
 	}
@@ -41,9 +40,9 @@ void BanditForest::SaveResults_Gain(const char *nomfichier)
 	fic=fopen(buf,"w"); 
 	fprintf(fic,"Step;R-;R;R+;G-;G;G+;A-;A;A+\n");
 	
-	for (t=TimeDisplay;t<T;t=t+TimeDisplay) {
+	for (t=TIME_DISPLAY;t<T;t=t+TIME_DISPLAY) {
 		Regret=0.0;Gain=0.0;classif_s=0.0;r_s=0.0;s=0.0;TC=0.0;
-		for (n=0;n<Draws;n++) {
+		for (n=0;n<DRAWS;n++) {
       if (fscanf(f[n],"%d;%d;%d;%f",&t,&r[n],&g[n],&c[n]) == -1) {
         cerr << "fscanf" << endl;
         exit(EXIT_FAILURE);
@@ -52,24 +51,23 @@ void BanditForest::SaveResults_Gain(const char *nomfichier)
 			Gain=Gain+g[n];
 			TC=TC+c[n];
 		}
-    Regret /= (float)Draws;
-		Gain=Gain/(float)Draws;
-		TC=TC/(float)Draws;
-		for(i=0;i<Draws;i++) {
+    Regret /= (float)DRAWS;
+		Gain=Gain/(float)DRAWS;
+		TC=TC/(float)DRAWS;
+		for(i=0;i<DRAWS;i++) {
       s=s+(float)(g[i]-Gain)*(g[i]-Gain);
       r_s = r_s + (float)(r[i] - Regret)*(r[i]-Regret);
       classif_s = classif_s + (float)(c[i] - TC)*(c[i]-TC);
     }
 
-		s=sqrt(s/(float)(Draws));
-    r_s=sqrt(r_s/(float)Draws);
+		s=sqrt(s/(float)(DRAWS));
+    r_s=sqrt(r_s/(float)DRAWS);
     //printf("s : %f\n", s);
-		fprintf(fic,"%d;%f;%f;%f;%f;%f;%f;%f;%f;%f\n", t, Regret - 1.96*r_s/sqrt(Draws), Regret, Regret + 1.96*r_s/sqrt(Draws), 
-        Gain-1.96*s/(sqrt(Draws)), Gain, Gain+1.96*s/(sqrt(Draws)), 
-        TC - 1.96*classif_s/sqrt(Draws), TC, TC + 1.96*classif_s/sqrt(Draws));
+		fprintf(fic,"%d;%f;%f;%f;%f;%f;%f;%f;%f;%f\n", t, Regret - 1.96*r_s/sqrt(DRAWS), Regret, Regret + 1.96*r_s/sqrt(DRAWS), 
+        Gain-1.96*s/(sqrt(DRAWS)), Gain, Gain+1.96*s/(sqrt(DRAWS)), 
+        TC - 1.96*classif_s/sqrt(DRAWS), TC, TC + 1.96*classif_s/sqrt(DRAWS));
 	}
-  cout << "okay writing";
-	for (n=0;n<Draws;n++) {
+	for (n=0;n<DRAWS;n++) {
 		fclose(f[n]);
 		sprintf(buf,"%s.csv%d",nomfichier,n);
 		remove(buf);
@@ -94,23 +92,14 @@ int BanditForest::RoundRobin(int k, const vector<bool>& A)
 }
 
 
-void BanditForest::PrintContext()
-// Print the current context oracle
-{
-	int i;
-	
-	for (i=0;i<M;i++) cout << x_courant[i] << "_"; 
-  //cout << "k=" << oracle[pos_current] << endl;
-}
-
 void BanditForest::GetContext(uint pos, uint bruit)
-// feed x_courant with x[pos] and apply the bit inversion noise (bruit %)
+// feed current_context with dataset[pos] and apply the bit inversion noise (bruit %)
 {
 	int i;
 
 	for (i=0;i<M;i++) {
-		if ((uint)RAND_R(100.0)>= bruit) x_courant[i]=x.context(pos, i);
-		else x_courant[i]=1-x.context(pos,i);
+		if ((uint)RAND_R(100.0)>= bruit) x_courant[i] = dataset.context(pos, i);
+		else x_courant[i] = 1-dataset.context(pos,i);
 	}
 }
 
@@ -119,7 +108,7 @@ int BanditForest::Decide_Vote(Tree **p)
 // return the action selected by voting
 {
   vector<int> Votes(K);
-	for (int j=0;j<nbTree;j++) {
+	for (int j=0;j<NB_TREE;j++) {
 		Votes[p[j]->getAction()] += 1;
 	}
   return Votes.size() - 1 - (max_element(Votes.rbegin(), Votes.rend()) - Votes.rbegin());
@@ -128,7 +117,6 @@ int BanditForest::Decide_Vote(Tree **p)
 
 
 int BanditForest::PlayOLDP3(const char *nomfichier) {
-  cout << nomfichier << "in P3" << endl;
 	// KMD-Forest VE /AE Decide Vote
 	int t,n,c,j;
 	vector<bool> A;
@@ -138,23 +126,23 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
 	int reward,r_hat;
 	Tree **path;
 
-  Forest=(Tree **)malloc(sizeof(Tree *)*nbTree);
-	path=(Tree **)malloc(sizeof(Tree *)*nbTree);
+  Forest=(Tree **)malloc(sizeof(Tree *)*NB_TREE);
+	path=(Tree **)malloc(sizeof(Tree *)*NB_TREE);
   A = vector<bool>(K, true);
-	x_courant = make_unique<short[]>(M);
+	x_courant = vector<short>(M);
 
-	for (n=0;n<Draws;n++) {
+	for (n=0;n<DRAWS;n++) {
     cout << "--- Draw nb : " << n+1 << " ---" << endl;
 		sprintf(buf,"%s.csv%d",nomfichier,n);
 		fic=fopen(buf,"w");
 		Gain=0;
     Regret=0;
-    for (j=0;j<nbTree;j++) {
+    for (j=0;j<NB_TREE;j++) {
       Forest[j] = new Tree();
       Forest[j]->AllocPath({(uint)M}, 0);
     }
 		c=1;
-    uint dataset_size = x.getShape().first;
+    uint dataset_size = dataset.getShape().first;
 		pos_current=(uint) RAND_R(dataset_size);
 		a_current=0;
 		t=0;
@@ -166,40 +154,39 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
       // Observer le vecteur de contexte xt
 			GetContext(pos_current,NOISE);
       // Pour chaque 0 faire
-			for (j=0;j<nbTree;j++) {
+			for (j=0;j<NB_TREE;j++) {
         // c0 = c0(xt)
 				path[j]=Forest[j]->TreeSearch(x_courant);
         // si d0 != D0 ....
         // si on est en VariableSelection et que l'arbre est à une profondeur maximale
-				if ((t >= TL && path[j]->getState() == 0) || (path[j]->getDepth() == path[j]->getMaxDepth() && path[j]->getState() == 0)) {
+				if ((t >= TL && path[j]->getState() == VARIABLE_SELECTION) || (path[j]->getDepth() == path[j]->getMaxDepth() && path[j]->getState() == VARIABLE_SELECTION)) {
           // cheminsTermines = 1
           path[j]->ChangeState(ACTION_ELIMINATION);
         }
         // si l'arbre n'est pas à la profondeur max, mais qu'on est en VariableSelection
-				if (path[j]->getState() == 0) {
+				if (path[j]->getState() == VARIABLE_SELECTION) {
 					path[j]->setAction(RoundRobin(path[j]->getAction(),A));
 					//path[j]->setAction((path[j]->getAction() + 1) % K);
 				}
         // sinon
-				if (path[j]->getState() == 1) {
+				if (path[j]->getState() == ACTION_ELIMINATION) {
           path[j]->setAction(RoundRobin(path[j]->getAction(),path[j]->getAD()));
         }
         // Si cheminsTerminés
-				if (path[j]->getState() == 2) {
+				if (path[j]->getState() == EXPLOIT) {
           path[j]->setAction(path[j]->getK());
         }
 			}
       // Jouer le bras k et obtenir la récompense yk(t)
 			a_current=Decide_Vote(path);
       bool to_continue = false;
-      for (j=0; j < nbTree; j++) {
-        if (path[j]->getState() == 2) {
-          if (changePointDetectors.find(path[j]) != changePointDetectors.end() && changePointDetectors[path[j]]->update(t, x.best_arm(pos_current))) {
-            cout << "changed !" << endl;
+      for (j=0; j < NB_TREE; j++) {
+        if (path[j]->getState() == ACTION_ELIMINATION) {
+          if (changePointDetectors.find(path[j]) != changePointDetectors.end() && changePointDetectors[path[j]]->update(t, dataset.best_arm(pos_current))) {
             for (auto &it : changePointDetectors) delete it.second;
             changePointDetectors.clear();
-		        for (j=0;j<nbTree;j++) Forest[j]->FreeKMD();
-            for (j=0;j<nbTree;j++) {
+		        for (j=0;j<NB_TREE;j++) Forest[j]->FreeKMD();
+            for (j=0;j<NB_TREE;j++) {
               Forest[j] = new Tree();
               Forest[j]->AllocPath({(uint)M}, 0);
             }
@@ -211,12 +198,12 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
       if (to_continue) {
         continue;
       }
-			reward=(x.best_arm(pos_current)==a_current);
+			reward=(dataset.best_arm(pos_current)==a_current);
 			r_hat=reward;
       // Pour chaque 0 faire
-			for (j=0;j<nbTree;j++) {
+			for (j=0;j<NB_TREE;j++) {
         // t = t+1 on incrémente le temps local du noeud
-				if (path[j]->getState() == 0) {
+				if (path[j]->getState() == VARIABLE_SELECTION) {
           path[j]->UpdatePath(reward, a_current, x_courant);
           // Sinon
           if (a_current == K-1) {
@@ -225,7 +212,7 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
           }
         }
         // si c0 = D0
-				if (path[j]->getState() == 1) {
+				if (path[j]->getState() == ACTION_ELIMINATION) {
           // S = AE
 				  if (path[j]->getAD()[a_current]==1) {
             path[j]->UpdateLeaf(r_hat,a_current);
@@ -233,7 +220,7 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
           // Dans AE : Si k = Dernier(St)
 					if (a_current == path[j]->LastAction()) {
             path[j]->ActionElimination();
-            if (changePointDetectors.size() < 3 && path[j]->getState() == 2) {
+            if (changePointDetectors.size() < 3 && path[j]->getState() == EXPLOIT) {
               changePointDetectors[path[j]] = new RBOCPD(T-t, path[j]->getK());
             }
           }
@@ -244,8 +231,8 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
       Gain += reward;
       Regret += 1 - reward;
 
-			if (c == TimeDisplay) {
-        fprintf(fic,"%d;%d;%d;%f\n",t+1,Regret,Gain,TC/(float)TimeDisplay);
+			if (c == TIME_DISPLAY) {
+        fprintf(fic,"%d;%d;%d;%f\n",t+1,Regret,Gain,TC/(float)TIME_DISPLAY);
         c=1;
         TC=0;
 			}
@@ -254,12 +241,11 @@ int BanditForest::PlayOLDP3(const char *nomfichier) {
 			if (pos_current == (uint)CONTEXTS_NB) pos_current=0;
 			t += 1;
       if (t == 2000005) {
-        x.permuteClasses(2);
-        cout << "Permuted" << endl;
+        dataset.permuteClasses(2);
       }
 		}
 		fclose(fic);
-		for (j=0;j<nbTree;j++) Forest[j]->FreeKMD();
+		for (j=0;j<NB_TREE;j++) Forest[j]->FreeKMD();
     for (auto &it : changePointDetectors) delete it.second;
     changePointDetectors.clear();
 	}
